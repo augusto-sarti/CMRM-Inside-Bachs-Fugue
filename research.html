@@ -1,0 +1,377 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Inside Bach's Fugue — Thematic Discovery (v0.11)</title><style>
+:root{color-scheme:dark;--bg:#0c1522;--panel:#17263a;--line:#34465b;--fg:#e8eff7;--muted:#b3c3d4;--gold:#f2b44d}*{box-sizing:border-box}body{margin:0;background:var(--bg);font:16px/1.55 system-ui,-apple-system,sans-serif;color:var(--fg)}header{background:#132338;padding:25px max(20px,calc((100vw - 1150px)/2));border-bottom:1px solid var(--line)}h1{font-size:clamp(26px,4vw,42px);margin:0}h2{font-size:22px;margin:0 0 8px}.overline{letter-spacing:.16em;color:var(--gold);font-size:12px;font-weight:700}main{max-width:1150px;margin:auto;padding:24px 18px 60px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:16px;padding:20px}.muted,small{color:var(--muted)}p{margin:6px 0 12px}.controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px}button,select,input{font:inherit}button{background:#294862;border:1px solid #4e7596;color:white;border-radius:9px;padding:9px 14px;cursor:pointer}button:hover{background:#376284}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold)}button.primary{background:#bb7e21;color:#101926;font-weight:700;border-color:#e7af4e}select,input[type=number]{background:#111f31;color:var(--fg);padding:8px;border-radius:7px;border:1px solid #58708a}input[type=range]{accent-color:var(--gold)}.voices{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:16px 0}.voice{background:#101d2d;border:1px solid var(--line);border-radius:9px;padding:12px}.voice label{display:flex;gap:10px;align-items:center;font-weight:700}.dot{height:13px;width:13px;border-radius:50%;flex:none}.canvasbox{background:#0a1725;border:1px solid var(--line);border-radius:10px;overflow:hidden}canvas{display:block;width:100%;height:330px;cursor:crosshair}.line{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}.status{color:#92dfdf;font-weight:600}.lesson{border-left:3px solid var(--gold);padding-left:14px;margin:12px 0}.badge{border:1px solid #57738e;display:inline-block;padding:3px 8px;border-radius:5px;font-size:13px;color:#c5d7e9}.matchlist{display:grid;gap:7px;margin:10px 0}.match{display:flex;gap:12px;align-items:center;justify-content:space-between;background:#101d2d;border:1px solid var(--line);border-radius:9px;padding:9px 12px}.match small{display:block}.two{display:grid;grid-template-columns:1fr 1fr;gap:15px}@media(max-width:740px){.two{grid-template-columns:1fr}canvas{height:300px}}a{color:#91d5ed}code{color:#f3cf93}details summary{cursor:pointer;font-weight:700;padding:5px 0}
+
+.discovery-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:16px 0}
+.discovery-card{border:1px solid #48617a;border-radius:12px;padding:14px;background:#142d3c;text-align:left;color:#ecf5fc;cursor:pointer;min-height:120px}
+.discovery-card:hover,.discovery-card:focus{border-color:#f2b44d;background:#214258;outline:2px solid transparent}
+.discovery-card.active{border:3px solid #f2b44d;background:#234155}
+.discovery-card strong{font-size:18px;display:block}.discovery-card small{display:block;color:#b2cbdd}
+.discovery-message{border-left:4px solid #f2b44d;padding:10px 15px;background:#153044;margin:12px 0}
+.discovery-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:12px 0}
+.discovery-actions button{font-size:16px;padding:12px 18px}
+</style></head><body><header><div class="overline">COMPUTER MUSIC REPRESENTATION AND MODELLING · CHAPTER 7</div><h1>Inside Bach's Fugue</h1><p>Thematic Discovery · automatic suggestions and optional manual search · Kyrie I from the <i>Mass in B minor</i>, BWV 232</p></header><main><section class="panel" id="discoveryTop" style="border:2px solid #d1a34c"><h2>Start here · Explore Bach's recurring melodic ideas</h2><p><strong>No manual selection is required.</strong> Choose an automatically suggested family below. The timeline will display only its matching excerpts across the five voices. Alternatively, select a passage yourself and search for its counterparts.</p><div class="discovery-actions"><button class="primary" id="discoverButton">Discover recurring melodic families</button><button id="manualButton">I want to select my own melody →</button></div><p class="status" id="discoveryStatus" aria-live="polite">Ready to explore. Press Discover to inspect computer-generated suggestions.</p><div id="discoveryFamilies" class="discovery-grid"></div><div id="discoveryDetails" class="discovery-message" style="display:none"></div><p class="muted">These families are computed from the Kyrie vocal note events, allowing transposition, pitch-range normalization, and time-resampling. They are <strong>candidates</strong>, not verified fugue subjects or countersubjects. Each suggestion should be checked by listening and against the score.</p></section><section class="panel"><h2>1 · Hear independent voices</h2><p>The five vocal parts are taken from an annotated MuseScore score. Their colors are <strong>voice identifiers</strong>, not labels of fugue subjects. The sustained, organ-like tones below are for analytical listening; they are not a choir performance. Notes retain the durations encoded in the score.</p><div class="voices" id="voices"></div><div class="controls"><button id="all">All voices</button><button id="none">Mute all</button><button id="one">Solo selected voice</button><label for="solo">Voice</label><select id="solo"></select></div></section>
+<section class="panel"><h2>2 · Compare only the recurring gestures</h2><p>After a search, the default filtered view shows only the notes of the reference and matched excerpts. Switch off the filter to see them in full counterpoint. Each dot is an actual notated pitch event. Horizontal position is <strong>score time</strong> (quarter-note units), not expressive performance time. The vertical position is MIDI pitch. Click inside the diagram to move the playhead.</p><div class="controls"><label>Start measure <input id="start" type="number" min="1" max="120" value="1" style="width:76px"></label><label>Measures shown <select id="span"><option>4</option><option selected>8</option><option>12</option><option>16</option><option>24</option></select></label><button id="prev">← Earlier</button><button id="next">Later →</button></div><p id="range" class="status"></p><div class="controls" style="margin:10px 0"><label style="background:#284b5d;padding:7px 10px;border-radius:8px"><input id="matchOnly" type="checkbox" checked> <strong>SHOW MATCHING EXCERPTS ONLY</strong></label><label><input id="showMotifs" type="checkbox" checked> Mark reference and selected match</label><label><input id="showOtherMatches" type="checkbox" checked> Show other candidates</label><button id="clearMotifs">Clear highlighting</button><span class="muted">Matching notes alone retain their voice colours. Gold = reference · cyan = selected candidate.</span></div><p id="highlightInfo" class="status" aria-live="polite">First select the passage in Section 3. Then click Find similar gestures; the normalized comparisons appear in Section 4.</p><div class="canvasbox"><canvas id="plot" aria-label="Piano-roll-style diagram of the five notated vocal parts"></canvas></div><div class="panel" style="margin-top:14px;border:2px solid #7792ae"><strong style="font-size:18px">Match-only timeline — all 127 measures</strong><p class="muted">After searching, ONLY the reference and the matched excerpts appear at their original score positions; everything else is hidden. This is a sparse similarity map, not the complete score. Disable “SHOW MATCHING EXCERPTS ONLY” to restore the whole texture. Click a highlighted position to navigate.</p><div class="canvasbox"><canvas id="overview" style="height:205px" aria-label="Entire-score overview showing highlighted melodic matches by voice"></canvas></div><p id="mapSummary" class="status">No matching search yet.</p></div><div class="controls" style="margin-top:13px"><button id="play" class="primary">▶ Play selection</button><button id="stop">■ Stop</button><label>Tempo <input id="tempo" type="range" min="45" max="105" value="64" step="1"></label><output id="bpm">64 BPM</output><span id="playing" class="status"></span></div></section>
+<section class="panel" id="manualSection"><h2>3 · Select a musical excerpt by hand</h2><p><strong>Drag horizontally in one voice lane</strong> to define the reference passage. The selection snaps to actual note onsets and includes the final selected note. Use the measure navigation above to reach another passage. The selected phrase can be longer than the earlier short-gesture examples; start with roughly 8–20 notes.</p><div class="controls"><button id="selectPrev">← Earlier measures</button><button id="selectNext">Later measures →</button><button id="clearSelection">Clear selected passage</button><span class="status" id="selectionStatus">Drag across a voice lane to select a reference.</span></div><div class="canvasbox" style="margin-top:10px"><canvas id="selector" style="height:270px;touch-action:none" aria-label="Drag across a voice lane to select an excerpt for similarity search"></canvas></div><p class="muted">The full note texture remains visible in this selector even when the separate matching timeline is filtered. Gold marks the selected reference; the reference voice and start/end measures are reported below. To change it, drag again.</p></section>
+<section class="panel"><h2>4 · Find transformed occurrences of your selected passage</h2>
+<p>Search for transformed occurrences of <strong>the entire passage you selected by dragging</strong>. Its beginning and end stay fixed. Candidate windows may contain somewhat more or fewer notes and can differ in pitch level, range, or timing. The manual mode preserves your selected reference boundaries while optimizing each candidate endpoint to find a convincing correspondence. Each candidate is reduced to a smoothed time–pitch curve, its average pitch is removed, and its pitch range may be rescaled. We then allow moderate local temporal deformation using a constrained dynamic-time-warping comparison. This is a <em>musical resemblance search</em>, not automatic identification of Bach’s subject.</p>
+<div class="controls"><label>Reference voice <select id="motifvoice"></select></label><label>Start near measure <input type="number" id="motifmeasure" value="3" min="1" max="127" style="width:76px"></label><label>Starting reference size <select id="motiflength"><option>4</option><option selected>6</option><option>8</option></select> notes</label><label>Method <select id="motifmode"><option value="manual" selected>Manual excerpt · search transformed occurrences</option><option value="adaptive">Adaptive short fragments · optimize boundaries</option><option value="flexible">Low-resolution contour · fixed reference</option><option value="interval">Exact intervals · diagnostic</option><option value="contour">Exact directional contour · diagnostic</option></select></label></div>
+<div class="controls" id="fuzzycontrols" style="margin-top:12px"><label>Tolerance <input type="range" id="motiftolerance" min="0.12" max="0.95" step="0.01" value="0.43"><output id="tolerancereadout">0.43</output></label><label><input id="allowScale" type="checkbox" checked> Allow vertical dilation/compression</label><label><input id="allowLength" type="checkbox" checked> Allow different note counts</label><label><input type="checkbox" id="adaptivePenalty" checked> Penalize trivial short matches</label><label>Top results <select id="motiftop"><option>10</option><option selected>20</option><option>40</option></select></label></div>
+<div class="panel" style="margin-top:12px;border:1px solid #55798a;background:#102a39"><strong>Pitch representation — new in v0.9</strong><div class="controls" style="margin-top:10px"><label>Coordinate system <select id="pitchspace"><option value="scale" selected>Locally estimated scale steps</option><option value="chromatic">Chromatic semitones (comparison)</option></select></label><label>Tonality context <select id="contextMeasures"><option value="4">4 measures</option><option value="8" selected>8 measures</option><option value="12">12 measures</option></select></label><label>Chromatic detail in scale mapping <input type="range" id="chromaticDetail" min="0" max="1" value="0.35" step="0.05"><output id="detailReadout">35%</output></label></div><p class="muted">Estimate a major/minor scale using all five voices in a wider musical neighbourhood. Notes are represented by continuous scale-step coordinates; chromatic inflections are retained fractionally. This is an exploratory tonal hypothesis, not verified harmonic analysis. Pitch translation and constrained timing/range changes remain allowed.</p><p id="keyStatus" class="status">Select a passage, then run the search to see the estimated reference scale.</p><div class="canvasbox" style="margin-top:10px"><canvas id="scaleComparison" style="height:175px" aria-label="Chromatic and scale-relative contours of the selected reference and matched candidate"></canvas></div><p class="muted" id="scaleSummary">Reference and selected match will be shown after searching. Solid gold = reference; dashed cyan = transformed candidate.</p></div>
+<div class="controls" style="margin-top:10px"><button id="findmotifs" class="primary">Find similar gestures</button></div><p class="status" id="reference"></p>
+<div class="canvasbox" style="margin-top:8px"><canvas id="motifplot" style="height:135px" aria-label="Reference melodic contour"></canvas></div><div class="panel" id="trajectoryPanel" style="margin-top:12px;border:2px solid #e6b65f;background:#122b3a"><strong style="font-size:19px">Matched melodic trajectories — normalized comparison</strong><p class="muted">This is where you SEE the matched contours. Gold is your manually selected phrase; the colored curves are the strongest candidates, aligned in normalized time and pitch so that transposition and permitted scaling are removed. Select a candidate in the list below to locate the original notes in the five-track score.</p><div class="canvasbox"><canvas id="trajectoryMatches" style="height:260px" aria-label="Overlay of the selected melody and its matched contours"></canvas></div><p class="status" id="trajectoryStatus">Select a phrase in Section 3, then click Find similar gestures. The matching contours will appear here.</p></div><p class="muted" id="matchsummary">Drag across a voice lane in Section 3, then press Find similar gestures.</p><div id="matches" class="matchlist" aria-live="polite"></div>
+<details><summary>What does “low resolution” mean here?</summary><p>Every melodic candidate is represented by 24 samples spread across its notated duration. A short smoothing filter suppresses note-by-note fluctuations. Removing mean pitch makes the comparison invariant to transposition; optionally dividing by pitch-range scale allows approximate interval expansion or compression. Manual matching preserves the selected reference extent and searches variable candidate lengths; adaptive search varies both fragment lengths (and searches every candidate onset); the ending points are chosen by minimizing a regularized contour distance. The selected fragments are shown with their estimated pitch offset, pitch-range ratio and time-scale ratio. Candidates are penalized for very short matches or nearly flat shapes, because these can generate deceptively good scores. Their starting and ending times are normalized. A constrained dynamic-time-warping path tolerates local differences in pacing. Candidates are ranked by normalized contour distance, and strongly overlapping results from the same voice are suppressed. A low score means that the <em>shapes</em> are similar—not that their harmony, rhythm, or formal function are the same.</p><p><strong>Limitations:</strong> Optimization of fragment boundaries can overfit: the best numerical match does not prove thematic identity. This comparison models one voice at a time, uses pitches and score timing rather than acoustic features, and is not invariant to melodic inversion or reversal. Rests and articulation remain simplified, and no candidate should be called a fugue subject until its rhythmic and contrapuntal context has been checked against the score.</p></details>
+</section>
+<section class="panel"><h2>5 · Discover, don't assume, the theme</h2><div class="two"><div class="lesson"><strong>Experiment A: autonomy</strong><p>Listen to each vocal part alone. Follow its changes of direction, rhythm and register. Which passages retain melodic character without the other parts?</p></div><div class="lesson"><strong>Experiment B: interaction</strong><p>Begin with one voice and enable the others successively. Listen for overlapping entrances, imitation and moments when independent lines create a collective gesture.</p></div></div><div class="lesson"><strong>Experiment C: recognition</strong><p>Find a gesture that sounds familiar in a second voice. Compare pitch and rhythm. Is it a literal repetition, a transposition, a transformation—or merely a coincidental resemblance?</p></div><details><summary>What is—and isn't—encoded here?</summary><p>The note events and colors come from the supplied MuseScore document. This prototype does <strong>not</strong> yet provide validated subject, countersubject, episode, stretto or exposition annotations. A later thematic view will require score-based candidate matching and musical verification. Playback currently uses sustained, organ-like equal-tempered instrumental tones and an adjustable constant tempo, and does not reproduce instrumental accompaniment, ornament interpretation, choir diction, rubato, or dynamics.</p><p>Source: <code>01_Kyrie I.mscz</code>, supplied for this educational project. The annotated edition and any eventual public performance audio require separate publication-rights review.</p></details></section><section class="panel"><h2>Source and scope</h2><p><span class="badge">Local preview · Not yet for public redistribution</span></p><p>This is an initial symbolic prototype, separate from the seven-module audio-based Structure Lab and independent of the students' concert visualization. The complete work contains 127 notated measures; this display allows inspection of all five vocal lines across them.</p></section></main>
+<script src="score_data.js"></script><script src="discovery_families.js"></script><script>
+(()=>{'use strict'; const D=window.BACH_DATA;if(!D){document.body.textContent='Score data missing.';return;}const $=id=>document.getElementById(id);const c=$('plot');const ctx=c.getContext('2d');const vs=$('voices');const selected=D.voices.map(()=>true);let active=0;let cursor=0,ac=null,timer=null,nodes=[],playing=false;let motifMatches=[];let referenceEvents=[];let selectedMatch=null;let referenceVoice=0;const overview=$('overview');const ovctx=overview.getContext('2d');const selector=$('selector'),selctx=selector.getContext('2d');let manualReference=null,selectionDrag=null;
+function selectorLayout(){const w=selector.clientWidth,h=selector.clientHeight;return {left:100,right:w-18,top:22,row:(h-35)/5}};
+function selectorPoint(e){const rect=selector.getBoundingClientRect(),l=selectorLayout();return {x:e.clientX-rect.left,y:e.clientY-rect.top,voice:Math.max(0,Math.min(4,Math.floor((e.clientY-rect.top-l.top)/l.row))),q:beginQ()+Math.max(0,Math.min(1,(e.clientX-rect.left-l.left)/Math.max(1,l.right-l.left)))*(endQ()-beginQ())};}
+function drawSelector(){const dpr=window.devicePixelRatio||1,rect=selector.getBoundingClientRect(),w=rect.width,h=rect.height,l=selectorLayout();selector.width=Math.max(1,Math.round(w*dpr));selector.height=Math.max(1,Math.round(h*dpr));selctx.setTransform(dpr,0,0,dpr,0,0);selctx.clearRect(0,0,w,h);const b=beginQ(),end=endQ(),xx=q=>l.left+(q-b)/(end-b)*(l.right-l.left);
+ D.voices.forEach((v,i)=>{const y=l.top+i*l.row;selctx.fillStyle=i%2?'#11263a':'#0e2031';selctx.fillRect(l.left,y,l.right-l.left,l.row-3);selctx.fillStyle=v.color;selctx.font='12px system-ui';selctx.fillText(v.name.slice(0,14),5,y+l.row/2+4);const ev=v.events.filter(e=>e.q<end&&e.q+e.d>b);for(const e of ev){const yy=y+l.row*.76-((e.p-45)/40)*l.row*.54;selctx.fillRect(Math.max(l.left,xx(e.q)),Math.min(y+l.row-7,Math.max(y+5,yy)),Math.max(3,xx(Math.min(end,e.q+e.d))-Math.max(l.left,xx(e.q))),3)} });
+ for(let q=Math.ceil(b/4)*4;q<end;q+=4){const x=xx(q);selctx.strokeStyle='#344b5d';selctx.beginPath();selctx.moveTo(x,l.top);selctx.lineTo(x,l.top+5*l.row);selctx.stroke();selctx.fillStyle='#c0cbda';selctx.font='10px system-ui';selctx.fillText(String(Math.floor(q/4)+1),x+2,12)}
+ function overlay(vi,q0,q1){if(vi==null)return;const y=l.top+vi*l.row;selctx.fillStyle='rgba(255,194,79,.19)';selctx.fillRect(xx(Math.max(b,q0)),y,Math.max(3,xx(Math.min(end,q1))-xx(Math.max(b,q0))),l.row-3);selctx.strokeStyle='#ffc24f';selctx.lineWidth=2;selctx.strokeRect(xx(Math.max(b,q0)),y,Math.max(3,xx(Math.min(end,q1))-xx(Math.max(b,q0))),l.row-3)}
+ if(manualReference)overlay(manualReference.voice,manualReference.q0,manualReference.q1);if(selectionDrag)overlay(selectionDrag.voice,Math.min(selectionDrag.q0,selectionDrag.q1),Math.max(selectionDrag.q0,selectionDrag.q1));}
+function finishSelection(drag){if(!drag)return;const vi=drag.voice,v=D.voices[vi],lo=Math.min(drag.q0,drag.q1),hi=Math.max(drag.q0,drag.q1);const candidates=v.events.filter(e=>e.q>=beginQ()&&e.q<endQ());if(!candidates.length)return;const nearest=q=>candidates.reduce((a,b)=>Math.abs(b.q-q)<Math.abs(a.q-q)?b:a);const a=nearest(lo),b=nearest(hi);const ia=v.events.indexOf(a),ib=v.events.indexOf(b),first=Math.min(ia,ib),last=Math.max(ia,ib);const seq=v.events.slice(first,last+1);if(seq.length<4){$('selectionStatus').textContent='Choose at least four notes: drag over a longer passage.';return;}manualReference={voice:vi,first,last,q0:seq[0].q,q1:seq.at(-1).q+seq.at(-1).d,events:seq};referenceVoice=vi;referenceEvents=seq;motifMatches=[];selectedMatch=null;$('motifvoice').value=String(vi);$('motifmeasure').value=String(seq[0].m);$('motifmode').value='manual';syncMotifControls();$('selectionStatus').textContent=`${v.name}: ${seq.length} notes, measures ${seq[0].m}–${seq.at(-1).m}. Ready to search.`;$('reference').textContent='Manual reference selected: '+$('selectionStatus').textContent;$('matchsummary').textContent='Now click Find similar gestures in Section 4. The overlaid trajectories will appear below that button.';motifDraw(seq);renderMatchedTrajectories();draw();}
+selector.addEventListener('pointerdown',e=>{const p=selectorPoint(e),l=selectorLayout();if(p.x<l.left||p.y<l.top)return;selectionDrag={voice:p.voice,q0:p.q,q1:p.q};selector.setPointerCapture(e.pointerId);drawSelector();});
+selector.addEventListener('pointermove',e=>{if(!selectionDrag)return;const p=selectorPoint(e);selectionDrag.q1=p.q;drawSelector();});
+selector.addEventListener('pointerup',e=>{if(!selectionDrag)return;selectionDrag.q1=selectorPoint(e).q;const drag=selectionDrag;selectionDrag=null;finishSelection(drag);drawSelector();});
+selector.addEventListener('pointercancel',()=>{selectionDrag=null;drawSelector()});
+$('selectPrev').onclick=()=>{setStart(Number($('start').value)-count());drawSelector()};$('selectNext').onclick=()=>{setStart(Number($('start').value)+count());drawSelector()};$('clearSelection').onclick=()=>{manualReference=null;referenceEvents=[];motifMatches=[];selectedMatch=null;$('selectionStatus').textContent='Drag across a voice lane to select a reference.';motifDraw([]);draw();};
+
+// Search output is a set of short note spans, not an annotation of the entire score.
+function matchOnlyActive(){return $('matchOnly').checked && (motifMatches.length>0 || referenceEvents.length>0)}
+function displayedMatches(){return motifMatches.slice(0,Math.min(40,Number($('motiftop').value)||20))}
+function matchedEventSets(){const sets=D.voices.map(()=>new Set());for(const e of (selectedMatch?.refEvents||referenceEvents))sets[referenceVoice].add(e);for(const m of displayedMatches())for(const e of m.events)sets[m.voice].add(e);return sets}
+const names=D.voices.map(v=>v.name);D.voices.forEach((v,i)=>{const box=document.createElement('div');box.className='voice';box.innerHTML=`<label><input type="checkbox" checked id="v${i}"><span class="dot" style="background:${v.color}"></span>${v.name}</label><small>${v.events.length} notated note events</small>`;vs.appendChild(box);$(`v${i}`).addEventListener('change',e=>{selected[i]=e.target.checked;draw();});const op=document.createElement('option');op.value=i;op.textContent=v.name;$('solo').appendChild(op);const mo=op.cloneNode(true);$('motifvoice').appendChild(mo);});
+function beginQ(){return (Math.max(1,Math.min(120,Number($('start').value)||1))-1)*4}function count(){return Number($('span').value)}function endQ(){return Math.min(508,beginQ()+count()*4)}function box(){return {left:70,right:c.clientWidth-18,top:14,bottom:c.clientHeight-26}}function setStart(v){$('start').value=Math.max(1,Math.min(120,v));draw()}function resized(){const dpr=window.devicePixelRatio||1;const rect=c.getBoundingClientRect();c.width=Math.round(rect.width*dpr);c.height=Math.round(rect.height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);draw()}
+function drawOverview(){
+ const rect=overview.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+ overview.width=Math.max(1,Math.round(rect.width*dpr));overview.height=Math.max(1,Math.round(rect.height*dpr));
+ ovctx.setTransform(dpr,0,0,dpr,0,0);
+ const w=rect.width,h=rect.height,left=106,right=w-13,track=(right-left),qMax=508;
+ ovctx.clearRect(0,0,w,h);ovctx.font='12px system-ui';
+ for(let i=0;i<5;i++){
+  const yy=28+i*31,v=D.voices[i];ovctx.fillStyle='#c7d8e7';ovctx.fillText(v.name,7,yy+3);
+  ovctx.fillStyle='#152b3d';ovctx.fillRect(left,yy-9,track,19);
+  ovctx.fillStyle=v.color;ovctx.globalAlpha=.68;
+  const eventsToShow=matchOnlyActive()?v.events.filter(e=>matchedEventSets()[i].has(e)):v.events;
+  for(const e of eventsToShow){const xx=left+e.q/qMax*track;ovctx.fillRect(xx,yy-2,Math.max(1.4,e.d/qMax*track),matchOnlyActive()?10:4)}
+  ovctx.globalAlpha=1;
+ }
+ if(motifMatches.length && $('showMotifs').checked){
+  const mark=(v,events,color,height)=>{if(!events?.length)return;const q0=events[0].q,q1=events.at(-1).q+events.at(-1).d,yy=28+v*31;
+   ovctx.fillStyle=color;ovctx.fillRect(left+q0/qMax*track,yy-height/2,Math.max(3,(q1-q0)/qMax*track),height);
+   ovctx.strokeStyle='#081421';ovctx.lineWidth=1;ovctx.strokeRect(left+q0/qMax*track,yy-height/2,Math.max(3,(q1-q0)/qMax*track),height);
+  };
+  if($('showOtherMatches').checked)for(const m of motifMatches.slice(0,40)){if(m!==selectedMatch)mark(m.voice,m.events,'#a8d1db',9)}
+  mark(referenceVoice,selectedMatch?.refEvents||referenceEvents,'#ffc24f',17);
+  if(selectedMatch)mark(selectedMatch.voice,selectedMatch.events,'#32efff',17);
+ }
+ const bq=beginQ(),eq=endQ();ovctx.strokeStyle='#f4f8fd';ovctx.lineWidth=1.5;ovctx.strokeRect(left+bq/qMax*track,15,(eq-bq)/qMax*track,5*31-7);
+ ovctx.fillStyle='#b1c4d5';ovctx.font='11px system-ui';for(let m=1;m<=127;m+=16){ovctx.fillText(String(m),left+(m-1)*4/qMax*track,198)}
+ $('mapSummary').textContent=motifMatches.length?`Match-only view: ${displayedMatches().length} candidates + reference, across five voices. Unmatched music is hidden; coloured fragments remain at their true score positions.`:'Search for similar gestures in Section 3 to populate the match-only timeline.';
+}
+overview.addEventListener('click',e=>{const r=overview.getBoundingClientRect(),q=Math.max(0,Math.min(508,(e.clientX-r.left-106)/Math.max(1,r.width-119)*508));setStart(Math.floor(q/4)+1);$('plot').scrollIntoView({behavior:'smooth',block:'center'});});
+function draw(){drawSelector();const w=c.clientWidth,h=c.clientHeight;ctx.clearRect(0,0,w,h);const b=box(),bq=beginQ(),eq=endQ();$('range').textContent=`${matchOnlyActive()?'MATCHES ONLY · ':''}Measures ${bq/4+1}–${Math.ceil(eq/4)} · ${eq-bq} quarter-note units`; const x=q=>b.left+(q-bq)/(eq-bq)*(b.right-b.left);const y=p=>b.bottom-(p-38)/49*(b.bottom-b.top);ctx.font='11px system-ui';for(let m=Math.floor(bq/4);m<=eq/4;m++){const xx=x(m*4);ctx.strokeStyle=m%4===0?'#53677b':'#2a3c50';ctx.beginPath();ctx.moveTo(xx,b.top);ctx.lineTo(xx,b.bottom);ctx.stroke();if(m*4<eq){ctx.fillStyle='#bacbdb';ctx.fillText(String(m+1),xx+3,h-8)}}for(let p=40;p<=85;p+=5){ctx.fillStyle='#91a6b9';ctx.fillText(String(p),12,y(p)+4);ctx.strokeStyle='#23384b';ctx.beginPath();ctx.moveTo(b.left,y(p));ctx.lineTo(b.right,y(p));ctx.stroke();}
+const eventSets=matchOnlyActive()?matchedEventSets():null;D.voices.forEach((v,i)=>{if(!selected[i])return;const ev=v.events.filter(e=>e.q<eq&&e.q+e.d>=bq&&(!eventSets||eventSets[i].has(e)));ctx.globalAlpha=0.9;ctx.fillStyle=v.color;ctx.strokeStyle=v.color;ctx.lineWidth=1.8;let last=null;for(const e of ev){const xx=x(e.q), yy=y(e.p);if(last &&e.q-last.q<3.5){ctx.beginPath();ctx.moveTo(x(last.q),y(last.p));ctx.lineTo(xx,yy);ctx.stroke()}ctx.fillRect(xx-1.7,yy-2.2,Math.max(3,(x(Math.min(eq,e.q+e.d))-xx)),4.4);last=e}ctx.globalAlpha=1;});// Overlay matched note spans without replacing the source's voice colors.
+if($('showMotifs').checked && motifMatches.length){
+ const overlay=(voice,notes,color,width,opacity)=>{
+   if(!selected[voice]||!notes?.length)return;
+   ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.globalAlpha=opacity;
+   for(const e of notes){if(e.q>=eq||e.q+e.d<=bq)continue;
+     const x0=x(Math.max(bq,e.q)),x1=x(Math.min(eq,e.q+Math.max(.1,e.d))),yy=y(e.p);
+     ctx.strokeRect(x0-2.5, yy-5.5, Math.max(5,x1-x0+5),11);
+   }
+   ctx.restore();
+ };
+ if($('showOtherMatches').checked)for(const m of motifMatches.slice(0,Math.min(20,Number($('motiftop').value)))){
+   if(m!==selectedMatch)overlay(m.voice,m.events,'#b9e5e9',1.5,.45);
+ }
+ const ref=selectedMatch?.refEvents||referenceEvents;
+ overlay(referenceVoice,ref,'#ffc24f',5,1);
+ if(selectedMatch)overlay(selectedMatch.voice,selectedMatch.events,'#65f1ff',5,1);
+}
+if(cursor>=bq&&cursor<=eq){ctx.strokeStyle='#ffc85f';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x(cursor),b.top);ctx.lineTo(x(cursor),b.bottom);ctx.stroke();}drawOverview();}
+c.addEventListener('click',e=>{const r=c.getBoundingClientRect(),b=box();const fraction=Math.max(0,Math.min(1,(e.clientX-r.left-b.left)/(b.right-b.left)));cursor=beginQ()+fraction*(endQ()-beginQ());draw()});function stop(){if(timer){clearInterval(timer);timer=null}nodes.forEach(n=>{try{n.stop(0)}catch{}});nodes=[];playing=false;$('playing').textContent='';$('play').textContent='▶ Play selection';}
+function synthNote(p,t,d,gain){const osc=ac.createOscillator(),env=ac.createGain();osc.type='triangle';osc.frequency.value=440*Math.pow(2,(p-69)/12);osc.connect(env);env.connect(ac.destination);const attack=.025,release=.075,hold=Math.max(attack+.012,d-release);env.gain.setValueAtTime(0,t);env.gain.linearRampToValueAtTime(Math.min(.024,gain),t+attack);env.gain.setValueAtTime(Math.min(.024,gain),t+hold);env.gain.linearRampToValueAtTime(0,t+Math.max(hold+.015,d));osc.start(t);osc.stop(t+Math.max(hold+.02,d)+.015);nodes.push(osc)}
+async function play(){stop();const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio){alert('Web Audio is unavailable in this browser.');return;}if(!ac)ac=new Audio();await ac.resume();const bpm=Number($('tempo').value),rate=60/bpm,start=Math.max(beginQ(),cursor),end=endQ(),now=ac.currentTime+.09;let n=0;D.voices.forEach((v,i)=>{if(!selected[i])return;for(const e of v.events){if(e.q>=start&&e.q<end){synthNote(e.p,now+(e.q-start)*rate,e.d*rate,.012);n++}}});if(!n){$('playing').textContent='No selected notes at this position';return;}playing=true;$('play').textContent='↻ Restart';const real=performance.now();$('playing').textContent=`Playing ${n} notes · sustained analytical tones`;timer=setInterval(()=>{cursor=start+(performance.now()-real)/1000/rate;if(cursor>=end){stop();cursor=beginQ()}draw()},45)}
+
+function motifDraw(ref){const canvas=$('motifplot'), cx=canvas.getContext('2d'),r=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,r.width,r.height);cx.fillStyle='#aebfd0';cx.font='12px system-ui';if(!ref.length){cx.fillText('Choose an example to see its pitch trajectory.',15,25);return;}const lo=Math.min(...ref.map(e=>e.p)),hi=Math.max(...ref.map(e=>e.p)),delta=Math.max(4,hi-lo),x=i=>28+i*(r.width-55)/Math.max(1,ref.length-1),y=p=>r.height-25-(p-lo+1)/(delta+2)*(r.height-48);cx.strokeStyle='#f2b44d';cx.lineWidth=2.5;cx.beginPath();ref.forEach((e,i)=>i?cx.lineTo(x(i),y(e.p)):cx.moveTo(x(i),y(e.p)));cx.stroke();ref.forEach((e,i)=>{cx.beginPath();cx.arc(x(i),y(e.p),4,0,Math.PI*2);cx.fillStyle='#f2b44d';cx.fill();cx.fillStyle='#c0cfdd';cx.fillText(String(e.p),x(i)-8,r.height-6)});}
+function renderMatchedTrajectories(){
+ const canvas=$('trajectoryMatches');if(!canvas)return;
+ const box=canvas.getBoundingClientRect(),w=Math.max(280,box.width),h=Math.max(230,box.height),dpr=window.devicePixelRatio||1;
+ canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);const g=canvas.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
+ const left=50,right=w-22,top=28,bottom=h-42;
+ g.strokeStyle='#435a70';g.lineWidth=1;
+ for(let i=0;i<=4;i++){let y=top+(bottom-top)*i/4;g.beginPath();g.moveTo(left,y);g.lineTo(right,y);g.stroke();}
+ if(!referenceEvents.length){g.fillStyle='#bcd0df';g.font='14px system-ui';g.fillText('Select a melody in Section 3.',left,55);return;}
+ const norm=seq=>lowresCurve(seq,$('allowScale').checked).values;
+ const ref=norm(referenceEvents),candidates=motifMatches.slice(0,6),all=[ref,...candidates.map(m=>norm(m.events))];
+ const amplitude=Math.max(1.2,...all.flat().map(v=>Math.abs(v)))*1.1;
+ const xx=i=>left+i*(right-left)/(SAMPLE_COUNT-1), yy=v=>(top+bottom)/2-v/amplitude*(bottom-top)*.46;
+ const paint=(arr,color,weight,dash)=>{g.beginPath();g.strokeStyle=color;g.lineWidth=weight;g.setLineDash(dash||[]);arr.forEach((v,i)=>i?g.lineTo(xx(i),yy(v)):g.moveTo(xx(i),yy(v)));g.stroke();g.setLineDash([])};
+ const colors=['#56e1f2','#ed88b2','#96d684','#c6a8ff','#ffb06d','#b7d3e4'];
+ candidates.forEach((m,i)=>paint(all[i+1],colors[i],selectedMatch===m?3:1.8,[6,3]));paint(ref,'#ffd05e',3.6,[]);
+ g.font='12px system-ui';g.fillStyle='#dce7f0';g.fillText('Relative pitch',8,17);g.fillText('Normalized musical time →',Math.max(left,right-190),h-10);
+ g.fillStyle='#ffd05e';g.fillRect(left,8,15,4);g.fillStyle='#dce7f0';g.fillText('Reference',left+20,15);
+ candidates.forEach((m,i)=>{const x=left+112+(i%3)*Math.min(138,(right-left-112)/3),y=12+Math.floor(i/3)*16;g.fillStyle=colors[i];g.fillRect(x,y-5,12,3);g.fillStyle='#dce7f0';g.font='10px system-ui';g.fillText(`${i+1}: ${D.voices[m.voice].name} m.${m.m}`,x+15,y);});
+ $('trajectoryStatus').textContent=candidates.length?`${candidates.length} candidate contours plotted against your reference. The curves are normalized; inspect voice/measure labels and listen before treating any as a subject or countersubject.`:'No candidate passed the current threshold. Increase Tolerance and click Find similar gestures again; the gold reference is still shown.';
+}
+function shape(events,mode){const pitches=events.map(e=>e.p);return pitches.slice(1).map((p,i)=>mode==='contour'?Math.sign(p-pitches[i]):p-pitches[i]);}
+const SAMPLE_COUNT=24;
+// Estimate local tonal context from all five voices; cache by measure.
+const MAJOR_PROFILE=[6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88];
+const MINOR_PROFILE=[6.33,2.68,3.52,5.38,2.60,3.53,2.54,4.75,3.98,2.69,3.34,3.17];
+const SCALE_MAJOR=[0,2,4,5,7,9,11],SCALE_MINOR=[0,2,3,5,7,8,10];
+const NAMES=['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+const localKeyCache=new Map();
+function tonalContext(q){
+ const context=Number($('contextMeasures')?.value||8),grid=Math.floor(q/4),ck=context+':'+grid;
+ if(localKeyCache.has(ck))return localKeyCache.get(ck);
+ const half=2*context,center=(grid+.5)*4,pc=Array(12).fill(0);
+ for(const voice of D.voices)for(const e of voice.events){
+   const midpoint=e.q+e.d*.5,dist=Math.abs(midpoint-center);
+   if(dist>half+e.d*.5)continue;
+   const w=Math.min(2.5,e.d)*Math.max(0,1-dist/(half+2));pc[e.p%12]+=w;
+ }
+ const sum=pc.reduce((a,b)=>a+b,0),norm=sum||1;
+ const rank=[];
+ for(let root=0;root<12;root++)for(const minor of [false,true]){
+   const prof=minor?MINOR_PROFILE:MAJOR_PROFILE;
+   let dot=0,pa=0,pb=0;
+   const avg=prof.reduce((a,b)=>a+b,0)/12;
+   for(let k=0;k<12;k++){
+     const x=pc[(root+k)%12]/norm-1/12,y=prof[k]-avg;
+     dot+=x*y;pa+=x*x;pb+=y*y;
+   }
+   rank.push({root,minor,score:dot/Math.sqrt(Math.max(1e-9,pa*pb))});
+ }
+ rank.sort((a,b)=>b.score-a.score);
+ const best={...rank[0],runnerUp:rank[1].score, label:NAMES[rank[0].root]+' '+(rank[0].minor?'minor':'major')};
+ localKeyCache.set(ck,best);return best;
+}
+function scalePitch(p,key){
+ const intervals=key.minor?SCALE_MINOR:SCALE_MAJOR;
+ const rel=p-key.root;const oct=Math.floor(rel/12),sem=((rel%12)+12)%12;
+ for(let d=0;d<7;d++){
+   const lo=intervals[d],hi=d===6?12:intervals[d+1];
+   if(sem>=lo&&sem<=hi){
+      const chromaticDetail=Number($('chromaticDetail')?.value||0.35);
+      const ratio=(sem-lo)/(hi-lo);
+      // Chromatic intervals are partly smoothed into the local diatonic grid.
+      // The result is continuous and monotone within an octave.
+      return oct*7+d+ratio*chromaticDetail;
+   }
+ }
+ return oct*7;
+}
+function mappedSequence(seq){
+ if($('pitchspace')?.value!=='scale')return seq;
+ const center=.5*(seq[0].q+seq.at(-1).q+seq.at(-1).d);
+ const key=tonalContext(center);
+ return seq.map(e=>({...e,p:scalePitch(e.p,key)}));
+}
+function drawScaleComparison(ref,candidate){
+ const canvas=$('scaleComparison');if(!canvas)return;
+ const c=canvas.getContext('2d'),rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+ canvas.width=Math.max(1,Math.round(rect.width*dpr));canvas.height=Math.max(1,Math.round(rect.height*dpr));c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,rect.width,rect.height);
+ const W=rect.width,H=rect.height;
+ if(!ref?.length){c.fillStyle='#aebfd0';c.font='12px system-ui';c.fillText('Select a reference and run the search.',12,25);return;}
+ const colorA='#f2b44d',colorB='#65f1ff';
+ function renderPanel(row,relative){
+  const top=row===0?5:H/2+3,bottom=row===0?H/2-9:H-15;
+  const lines=[ref,candidate].filter(Boolean).map((seq,i)=>{
+   const key=tonalContext((seq[0].q+seq.at(-1).q)/2);
+   const p=seq.map(e=>relative?scalePitch(e.p,key):e.p);
+   const m=p.reduce((a,b)=>a+b,0)/p.length;
+   return {values:p.map(v=>v-m),seq,i};
+  });
+  const abs=Math.max(2,...lines.flatMap(o=>o.values.map(Math.abs)));
+  c.fillStyle='#b4cada';c.font='11px system-ui';c.fillText(relative?'Scale-relative pitch steps (centered)':'Chromatic semitones (centered)',12,top+12);
+  const y0=top+18,y1=bottom,cY=(y0+y1)/2;
+  c.strokeStyle='#526477';c.lineWidth=1;c.beginPath();c.moveTo(10,cY);c.lineTo(W-10,cY);c.stroke();
+  for(const o of lines){
+   c.strokeStyle=o.i?colorB:colorA;c.lineWidth=2.2;c.setLineDash(o.i?[5,3]:[]);c.beginPath();
+   const q0=o.seq[0].q,q1=o.seq.at(-1).q+o.seq.at(-1).d;
+   o.values.forEach((v,i)=>{const x=16+(o.seq[i].q-q0)/Math.max(.01,q1-q0)*(W-32);const y=cY-v/abs*(y1-y0)*.40;if(i)c.lineTo(x,y);else c.moveTo(x,y)});c.stroke();c.setLineDash([]);
+  }
+ }
+ renderPanel(0,false);renderPanel(1,true);
+}
+function lowresCurve(seq,allowScale){
+  seq=mappedSequence(seq);
+  const q0=seq[0].q, qEnd=Math.max(seq[seq.length-1].q+Math.min(seq[seq.length-1].d,2),q0+0.01);
+  const length=qEnd-q0;
+  // Linear interpolation between onsets, then a triangular low-pass filter.
+  const t=seq.map(e=>(e.q-q0)/length),p=seq.map(e=>e.p);
+  const raw=[];let j=0;
+  for(let i=0;i<SAMPLE_COUNT;i++){
+    const u=i/(SAMPLE_COUNT-1);
+    while(j+1<t.length-1&&t[j+1]<u)j++;
+    if(u<=t[0])raw.push(p[0]);
+    else if(u>=t[t.length-1])raw.push(p[p.length-1]);
+    else {const alpha=(u-t[j])/Math.max(1e-6,t[j+1]-t[j]);raw.push(p[j]+alpha*(p[j+1]-p[j]));}
+  }
+  const smoothed=raw.map((_,i)=>{let sum=0,ws=0;for(let k=-2;k<=2;k++){
+    const z=Math.min(SAMPLE_COUNT-1,Math.max(0,i+k)),w=3-Math.abs(k);sum+=w*raw[z];ws+=w;
+  }return sum/ws;});
+  const mean=smoothed.reduce((a,b)=>a+b,0)/SAMPLE_COUNT;
+  const centered=smoothed.map(v=>v-mean);
+  const rms=Math.sqrt(centered.reduce((a,b)=>a+b*b,0)/SAMPLE_COUNT);
+  return {values:centered.map(v=>v/(allowScale?Math.max(1.5,rms):5)),range:rms, duration:length};
+}
+function curveDistance(a,b){
+  // Local DTW: constrained to 20% of the sampled sequence, permitting moderate rubato.
+  const n=a.length,m=b.length,band=5,previous=Array(m+1).fill(Infinity),current=Array(m+1).fill(Infinity);
+  previous[0]=0;
+  for(let i=1;i<=n;i++){
+    current.fill(Infinity);
+    for(let j=Math.max(1,i-band);j<=Math.min(m,i+band);j++){
+      const d=Math.abs(a[i-1]-b[j-1]);
+      current[j]=d+Math.min(previous[j-1],previous[j],current[j-1]);
+    }
+    for(let j=0;j<=m;j++)previous[j]=current[j];
+  }
+  return previous[m]/Math.max(n,m);
+}
+function findMotifs(){
+ const vi=Number($('motifvoice').value),measure=Number($('motifmeasure').value),len=Number($('motiflength').value),mode=$('motifmode').value;
+ const manual=mode==='manual';if(manual&&!manualReference){$('matchsummary').textContent='First drag across a voice lane in Section 3 to select the reference.';return;}referenceVoice=manual?manualReference.voice:vi;selectedMatch=null;const events=D.voices[referenceVoice].events;let start=manual?manualReference.first:events.findIndex(e=>e.q>=(measure-1)*4);
+ if(start<0){$('matchsummary').textContent='No notes after this measure';return;}
+ referenceEvents=manual?manualReference.events:events.slice(start,start+len);
+ if(referenceEvents.length<(manual?4:len)){$('matchsummary').textContent='Not enough notes in the reference.';return;}
+ const flexible=mode==='flexible'||mode==='adaptive'||mode==='manual',allowScale=$('allowScale').checked,allowLength=$('allowLength').checked;
+ const tolerance=Number($('motiftolerance').value),top=Number($('motiftop').value);
+ const adaptive=mode==='adaptive';
+ const refCurve=flexible?lowresCurve(referenceEvents,allowScale):null;
+ const target=flexible?'':shape(referenceEvents,mode).join(',');
+ const matches=[];
+ // Adaptive matching searches a family of *short* reference fragments, not one imposed length.
+ // The start of the reference is selected by the listener; the last note is optimized.
+ const refLens=adaptive?[4,5,6,7,8].filter(n=>start+n<=events.length):[referenceEvents.length];
+ const refs=refLens.map(n=>{const seq=manual?referenceEvents:events.slice(start,start+n);return {seq,n:seq.length,curve:lowresCurve(seq,allowScale)};});
+ D.voices.forEach((v,i)=>{
+   for(let j=0;j<v.events.length-2;j++){
+     if(i===referenceVoice&&j>=start-referenceEvents.length+1&&j<=start+referenceEvents.length-1)continue;
+     const lengths=manual?(allowLength?Array.from(new Set([.65,.8,1,1.2,1.4].map(x=>Math.max(4,Math.round(referenceEvents.length*x))))):[referenceEvents.length]):adaptive?[3,4,5,6,7,8,9,10]:flexible&&allowLength?[Math.max(4,len-2),Math.max(4,len-1),len,len+1,len+2]:[len];
+     let best=null;
+     for(const n of [...new Set(lengths)]){
+       if(j+n>v.events.length)continue;
+       const seq=v.events.slice(j,j+n);
+       for(const r of (adaptive||manual)?refs:[{seq:referenceEvents,n:len,curve:refCurve}]){
+         const refDuration=r.curve?.duration||1,curve=flexible?lowresCurve(seq,allowScale):null;
+         const timeRatio=flexible?curve.duration/refDuration:1;
+         if((adaptive||manual)&&(timeRatio<.45||timeRatio>2.3))continue;
+         const scaleRatio=flexible?curve.range/Math.max(.01,r.curve.range):1;
+         // Flat contours cannot establish meaningful motif identity under range normalization.
+         if((adaptive||manual)&&(curve.range<.75||r.curve.range<.75))continue;
+         let score=0;
+         if(flexible){score=curveDistance(r.curve.values,curve.values);
+           if((adaptive||manual)&&$('adaptivePenalty').checked){
+             score+=.018*Math.abs(n-r.n)+.045*Math.max(0,5-Math.min(n,r.n));
+             score+=.025*Math.abs(Math.log(timeRatio));
+           }
+           if(score>tolerance)continue;
+         } else {if(shape(seq,mode).join(',')!==target)continue;}
+         if(!best||score<best.score){
+           best={voice:i,j,q:seq[0].q,end:seq[seq.length-1].q+seq[seq.length-1].d,m:seq[0].m,
+             trans:seq[0].p-r.seq[0].p,events:seq,refEvents:r.seq,score,timeRatio,scaleRatio,refKey:tonalContext((r.seq[0].q+r.seq.at(-1).q)/2),matchKey:tonalContext((seq[0].q+seq.at(-1).q)/2)};
+         }
+       }
+     }
+     if(best)matches.push(best);
+   }
+ });
+ // Rank strongest matches first, suppressing overlapping windows in the same voice.
+ matches.sort((a,b)=>a.score-b.score||a.q-b.q);
+ const filtered=[];
+ for(const m of matches){
+   if(filtered.some(x=>x.voice===m.voice && Math.max(0,Math.min(x.end,m.end)-Math.max(x.q,m.q))/Math.max(0.1,Math.min(x.end-x.q,m.end-m.q))>.55))continue;
+   filtered.push(m);
+ }
+ motifMatches=filtered;selectedMatch=filtered[0]||null;
+ $('reference').textContent=manual?`Manually selected reference: ${D.voices[referenceVoice].name}, measures ${referenceEvents[0].m}–${referenceEvents.at(-1).m}, ${referenceEvents.length} notes. Reference boundaries are fixed.`:adaptive?`Reference start: ${D.voices[vi].name}, measure ${referenceEvents[0].m}. The ending is optimized over 4–8 notes for each match.`:`Reference: ${D.voices[vi].name}, measure ${referenceEvents[0].m} · pitches ${referenceEvents.map(e=>e.p).join('–')} · intervals ${shape(referenceEvents,'interval').join(', ')}`;
+ motifDraw(selectedMatch?.refEvents||referenceEvents);renderMatchedTrajectories();
+ const refK=tonalContext((referenceEvents[0].q+referenceEvents.at(-1).q)/2);
+ $('keyStatus').textContent=`Reference context: ${refK.label} (profile correlation ${refK.score.toFixed(2)}, ambiguity margin ${(refK.score-refK.runnerUp).toFixed(2)}). ${selectedMatch?'Best candidate: '+selectedMatch.matchKey.label+'.':''} Estimated from all five voices; ambiguous labels should be checked against the harmony.`;
+ drawScaleComparison(selectedMatch?.refEvents||referenceEvents,selectedMatch?.events);
+ $('scaleSummary').textContent=`${$('pitchspace').value==='scale'?'Matching uses local scale-step coordinates':'Matching uses chromatic semitones'}. Chart shows both spaces independently. Gold reference; cyan selected candidate. Matching comparison removes mean pitch; range scaling is optional.`;
+ $('highlightInfo').textContent=selectedMatch?`MATCH-ONLY MODE: unmatched notes hidden. Showing strongest match: ${D.voices[selectedMatch.voice].name}, measure ${selectedMatch.m}. Gold = selected reference; cyan = matched passage.`:'No candidates at this tolerance. Adjust it and search again.';if(selectedMatch){setStart(Math.max(1,Math.floor(referenceEvents[0].q/4)-2));}draw();
+ $('trajectoryPanel').scrollIntoView({behavior:'smooth',block:'center'});
+ $('matchsummary').textContent=`${filtered.length} candidates ${flexible?`at distance ≤ ${tolerance.toFixed(2)}`:`with identical ${mode==='contour'?'directions':'intervals'}`}. Showing ${Math.min(top,filtered.length)} strongest non-overlapping matches. These are resemblance hypotheses, not verified thematic entries.`;
+ const list=$('matches');list.replaceChildren();
+ filtered.slice(0,top).forEach((m,i)=>{
+   const entry=document.createElement('div');entry.className='match';const name=document.createElement('div');const title=document.createElement('strong');
+   title.textContent=`${D.voices[m.voice].name} · measure ${m.m}`;name.appendChild(title);
+   const detail=document.createElement('small');detail.textContent=`${flexible?'Contour distance '+m.score.toFixed(3)+' · ':''}${m.refEvents.length}↔${m.events.length} notes · pitch shift ${m.trans>0?'+':''}${m.trans} st · pitch-range ×${m.scaleRatio.toFixed(2)} · time ×${m.timeRatio.toFixed(2)}`;
+   name.appendChild(detail);entry.appendChild(name);
+   const btn=document.createElement('button');btn.textContent='View candidate';btn.onclick=()=>{stop();selectedMatch=m;const refStart=m.refEvents[0].q;const refEnd=m.refEvents.at(-1).q+m.refEvents.at(-1).d;const first=Math.min(refStart,m.q),last=Math.max(refEnd,m.end);const spans=[4,8,12,16,24];const need=(last-first)/4+1;const span=spans.find(n=>n>=need)||24;$('span').value=String(span);const measure=Math.max(1,Math.min(120,Math.floor(m.q/4)-2));setStart(measure);cursor=m.q;selected.forEach((_,v)=>{selected[v]=true;$('v'+v).checked=true});$('highlightInfo').textContent=`Selected: ${D.voices[m.voice].name}, measures ${m.m} onward. Gold reference in ${D.voices[referenceVoice].name}; cyan matching notes. ${last-first>24*4?'The fragments are too far apart to fit simultaneously; use Earlier/Later to view each.':'Both fragments are shown where possible.'}`;motifDraw(m.refEvents);renderMatchedTrajectories();drawScaleComparison(m.refEvents,m.events);$('keyStatus').textContent=`Reference scale: ${m.refKey.label}; candidate scale: ${m.matchKey.label}. These are local estimates, not verified keys.`;draw();$('plot').scrollIntoView({behavior:'smooth',block:'center'});};
+   entry.appendChild(btn);list.appendChild(entry);
+ });
+}
+
+// One-click automatic discovery uses offline-precomputed, score-derived candidates.
+// Existing manual matching remains available in Sections 3 and 4.
+function displayDiscoveredFamily(f){
+ if(!f || !f.occurrences.length)return;
+ stop();
+ const occurrences=f.occurrences.map(o=>{
+  const ev=D.voices[o.voice].events.slice(o.start,o.start+o.length);
+  return {...o,events:ev,q:ev[0].q,end:ev.at(-1).q+ev.at(-1).d,m:ev[0].m,score:o.distance,trans:0,timeRatio:1,scaleRatio:1,refKey:tonalContext(ev[0].q),matchKey:tonalContext(ev[0].q)};
+ }).filter(o=>o.events.length);
+ const lead=occurrences[0];if(!lead)return;
+ referenceVoice=lead.voice;referenceEvents=lead.events;
+ motifMatches=occurrences.slice(1).map(o=>({...o,refEvents:lead.events}));
+ selectedMatch=motifMatches[0]||null;
+ $('matchOnly').checked=true;$('showOtherMatches').checked=true;
+ $('motiftop').value='40';
+ selected.forEach((_,i)=>{selected[i]=true;$('v'+i).checked=true});
+ $('reference').textContent=`Auto-discovered Family ${f.id} · representative: ${D.voices[lead.voice].name}, m. ${lead.m} (${lead.events.length} notes).`;
+ $('matchsummary').textContent=`Family ${f.id}: ${occurrences.length} score-derived excerpt candidates across ${new Set(occurrences.map(x=>x.voice)).size} voices. Musical identity NOT yet verified.`;
+ $('highlightInfo').textContent=`Showing ONLY the notes of proposed Family ${f.id}. Gold = reference; cyan = selected related excerpt. Other families are hidden.`;
+ $('discoveryStatus').textContent=`Family ${f.id} selected. ${occurrences.length} occurrences shown; inspect the five-voice timeline below.`;
+ const d=$('discoveryDetails');d.style.display='block';d.textContent=`Family ${f.id}: ${occurrences.length} candidate excerpts in ${f.support} voices. Representative: ${D.voices[lead.voice].name} (measure ${lead.m}). These are similar melodic shapes, not certified subject/countersubject entries.`;
+ for(const b of document.querySelectorAll('.discovery-card'))b.classList.toggle('active',b.dataset.family===f.id);
+ // Expose the exact score positions and allow inspection of individual candidates.
+ const list=$('matches');list.replaceChildren();
+ occurrences.forEach((m,i)=>{
+  const row=document.createElement('div');row.className='match';
+  const t=document.createElement('div');t.innerHTML=`<strong>${i===0?'Reference: ':''}${D.voices[m.voice].name}, measure ${m.m}</strong><br><small>${m.events.length} notes · normalized shape distance ${m.score.toFixed(3)}</small>`;
+  const btn=document.createElement('button');btn.textContent='Go to excerpt';btn.onclick=()=>{
+   selectedMatch=i===0?null:motifMatches[i-1];setStart(Math.max(1,Math.min(120,m.m-2)));cursor=m.q;
+   draw();renderMatchedTrajectories();$('plot').scrollIntoView({behavior:'smooth',block:'center'});
+  };row.append(t,btn);list.appendChild(row);
+ });
+ setStart(Math.max(1,Math.min(120,lead.m-2)));
+ motifDraw(referenceEvents);drawScaleComparison(referenceEvents,selectedMatch?.events||null);
+ $('keyStatus').textContent=`Estimated reference tonal context: ${tonalContext(lead.q).label} (heuristic).`;
+ renderMatchedTrajectories();draw();
+ $('overview').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function startAutoDiscovery(){
+ const families=window.BACH_DISCOVERY||[];
+ const panel=$('discoveryFamilies');panel.replaceChildren();
+ if(!families.length){$('discoveryStatus').textContent='No discovery data was found. Confirm discovery_families.js is beside index.html.';return;}
+ for(const f of families){
+  const lead=f.occurrences[0];const btn=document.createElement('button');btn.type='button';btn.className='discovery-card';btn.dataset.family=f.id;
+  btn.innerHTML=`<strong>Family ${f.id}</strong><small>${f.occurrences.length} proposed excerpts · ${f.support} vocal parts</small><small>Example: ${D.voices[lead.voice].name}, measure ${lead.measure}</small><small>Click to show its occurrences →</small>`;
+  btn.onclick=()=>displayDiscoveredFamily(f);panel.appendChild(btn);
+ }
+ $('discoveryStatus').textContent=`${families.length} candidate families available. Select one to reveal its recurring passages.`;
+}
+$('discoverButton').onclick=startAutoDiscovery;
+$('manualButton').onclick=()=>{
+ $('motifmode').value='manual';$('matchOnly').checked=false;
+ $('selectionStatus').textContent='Drag horizontally across ONE voice lane to mark a phrase. Then click Find similar gestures in the next section.';
+ draw();$('manualSection').scrollIntoView({behavior:'smooth',block:'start'});
+};
+startAutoDiscovery();
+function syncMotifControls(){const isFlexible=['flexible','adaptive','manual'].includes($('motifmode').value);$('fuzzycontrols').style.display=isFlexible?'flex':'none';}
+$('motiftolerance').oninput=()=>{$('tolerancereadout').textContent=Number($('motiftolerance').value).toFixed(2)};
+$('motifmode').addEventListener('change',syncMotifControls);syncMotifControls();
+$('chromaticDetail').oninput=()=>{$('detailReadout').textContent=Math.round(Number($('chromaticDetail').value)*100)+'%'};
+for(const id of ['pitchspace','contextMeasures'])$(id).onchange=()=>{localKeyCache.clear();if(referenceEvents.length)findMotifs();};
+$('findmotifs').onclick=findMotifs;for(const id of ['matchOnly','showMotifs','showOtherMatches'])$(id).onchange=draw;$('clearMotifs').onclick=()=>{motifMatches=[];selectedMatch=null;referenceEvents=[];$('highlightInfo').textContent='Search cleared. Full musical texture is visible until the next search.';draw();};
+$('motifmode').onchange=()=>{if(referenceEvents.length&&($('motifmode').value!=='manual'||manualReference))findMotifs()};
+$('play').onclick=play;$('stop').onclick=()=>{stop();draw()};$('all').onclick=()=>{selected.fill(true);D.voices.forEach((_,i)=>$('v'+i).checked=true);draw()};$('none').onclick=()=>{selected.fill(false);D.voices.forEach((_,i)=>$('v'+i).checked=false);draw()};$('one').onclick=()=>{active=Number($('solo').value);selected.forEach((_,i)=>{selected[i]=i===active;$('v'+i).checked=selected[i]});draw()};$('start').onchange=()=>{stop();cursor=beginQ();draw()};$('span').onchange=()=>{stop();cursor=beginQ();draw()};$('prev').onclick=()=>{stop();setStart(Number($('start').value)-count());cursor=beginQ();draw()};$('next').onclick=()=>{stop();setStart(Number($('start').value)+count());cursor=beginQ();draw()};$('tempo').oninput=()=>$('bpm').textContent=$('tempo').value+' BPM';window.addEventListener('resize',()=>{resized();motifDraw(referenceEvents);drawSelector();drawScaleComparison(selectedMatch?.refEvents||referenceEvents,selectedMatch?.events);renderMatchedTrajectories()});window.addEventListener('pagehide',stop);resized();drawSelector();motifDraw([]);drawScaleComparison([],null);renderMatchedTrajectories();})();
+</script><div style="max-width:1100px;margin:18px auto 30px;padding:14px;color:#c7d5e4;font:13px system-ui">Kyrie I score preparation and voice annotations: Giorgio Brenna, used with permission. <a href="CREDITS_AND_RIGHTS.md">Credits and rights</a>. Automatic matches are experimental hypotheses, not validated thematic identifications.</div></body></html>
